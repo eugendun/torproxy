@@ -128,20 +128,17 @@ for env in $(printenv | grep '^TOR_'); do
     fi
 done
 
-chown -Rh tor. /etc/tor /var/lib/tor /var/log/tor 2>&1 |
+chown -Rh debian-tor. /etc/tor /var/lib/tor /var/log/tor 2>&1 |
             grep -iv 'Read-only' || :
 
-if [[ $# -ge 1 && -x $(which $1 2>&-) ]]; then
-    exec "$@"
-elif [[ $# -ge 1 ]]; then
-    echo "ERROR: command not found: $1"
+if [[ $# -lt 1 ]]; then
+    echo "ERROR: command required!"
     exit 13
-elif ps -ef | egrep -v 'grep|torproxy.sh' | grep -q tor; then
-    echo "Service already running, please restart container to apply changes"
 else
     [[ -e /srv/tor/hidden_service/hostname ]] && {
         echo -en "\nHidden service hostname: "
-        cat /srv/tor/hidden_service/hostname; echo; }
-    /usr/sbin/privoxy --user privoxy /etc/privoxy/config
-    exec /usr/bin/tor
+        cat /srv/tor/hidden_service/hostname; echo; }    
+    /usr/sbin/privoxy --user privoxy /etc/privoxy/config        
+    /usr/bin/tor > /var/log/tor/torproxy.log 2>&1 &    
+    wait-for-it.sh localhost:9051 -t 15 -- "$@"
 fi
